@@ -234,6 +234,18 @@ const ExampleHomeScreen = ({ navigation }) => {
           onPress={() => navigation.navigate("BlotterList")}
         />
       </View>
+      <View style={styles.buttonContainer}>
+        <Button
+          title="Notification"
+          onPress={() => navigation.navigate("Notification")}
+        />
+      </View>
+      <View style={styles.buttonContainer}>
+        <Button
+          title="Login"
+          onPress={() => navigation.navigate("Login")}
+        />
+      </View>
     </View>
   );
 };

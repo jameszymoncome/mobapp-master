@@ -46,19 +46,19 @@ const BlotterList = () => {
   }, []);
 
   // Function to handle visibility icon click
-  const handleVisibilityClick = (id) => {
-    Alert.alert("Incident ID:", id);
+  const handleVisibilityClick = (caseID) => {
+    Alert.alert("Incident ID:", caseID);
   };
 
   const renderBlotterItem = ({ item }) => (
     <View style={styles.row}>
-      <Text style={styles.cell}>{item.id}</Text>
-      <Text style={styles.cell}>{item.date}</Text>
+      <Text style={styles.cell}>{item.caseID}</Text>
+      <Text style={styles.cell}>{item.dateOccured}</Text>
       <Text style={styles.cell}>{item.type}</Text>
       <Text style={styles.cell}>{item.status}</Text>
-      <Text style={styles.cell}>{item.reported_by}</Text>
+      <Text style={styles.cell}>{item.processedBy}</Text>
       <View style={styles.actionCell}>
-        <TouchableOpacity onPress={() => handleVisibilityClick(item.id)}>
+        <TouchableOpacity onPress={() => handleVisibilityClick(item.caseID)}>
           <Icon name="visibility" size={20} color="#000" />
         </TouchableOpacity>
         <TouchableOpacity style={{ marginLeft: 10 }}>
@@ -69,7 +69,7 @@ const BlotterList = () => {
   );
 
   const filteredData = blotterData.filter((item) =>
-    item.reported_by?.toLowerCase().includes(searchText.toLowerCase())
+    item.processedBy?.toLowerCase().includes(searchText.toLowerCase())
   );
 
   if (loading) {

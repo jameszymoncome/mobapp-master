@@ -6,6 +6,8 @@ import ExampleHomeScreen from './Screen/ExampleHomeScreen';
 import CaseListScreen from './Screen/CaseListScreen';
 import CaseReportDetails from './Screen/CaseReportDetails';
 import BlotterList from './Screen/BlotterList';
+import Notification from './Screen/Notification';
+import Login from './Screen/Login';
 
 export default function App() {
 
@@ -18,6 +20,8 @@ export default function App() {
         <Stack.Screen name="CaseList" component={CaseListScreen} />
         <Stack.Screen name="CaseReport" component={CaseReportDetails} />
         <Stack.Screen name="BlotterList" component={BlotterList} />
+        <Stack.Screen name="Notification" component={Notification} />
+        <Stack.Screen name="Login" component={Login} />
       </Stack.Navigator>
 
   </NavigationContainer>
