@@ -12,6 +12,8 @@ import {
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import * as SecureStore from 'expo-secure-store';
 
+const API_BASE_URL = 'http://brgyapp.lesterintheclouds.com'; // Base URL for the backend
+
 const Notification = () => {
   const [filter, setFilter] = useState('Latest');
   const [userid, setUserID] = useState('');
@@ -35,18 +37,19 @@ const Notification = () => {
     }
   };
 
+  // Fetch notifications for the given userid
   const fetchNotifications = async (userID) => {
     try {
-      const response = await fetch('http://brgyapp.lesterintheclouds.com/get_notifications.php', {
+      const response = await fetch(`${API_BASE_URL}/get_notifications.php`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ userid: userID }),
       });
-  
+
       const data = await response.json();
-  
+
       if (data.success) {
         setNotifications(data.notifications);
       } else {
@@ -59,22 +62,41 @@ const Notification = () => {
       setLoading(false);
     }
   };
-  
 
   useEffect(() => {
     fetchUserID();
   }, []);
 
+  // Apply filtering logic (currently supports 'Latest' and 'Oldest')
+  const applyFilter = (criteria) => {
+    setFilter(criteria);
+    if (criteria === 'Latest') {
+      setNotifications((prev) =>
+        [...prev].sort((a, b) => new Date(b.dateOccured) - new Date(a.dateOccured))
+      );
+    } else if (criteria === 'Oldest') {
+      setNotifications((prev) =>
+        [...prev].sort((a, b) => new Date(a.dateOccured) - new Date(b.dateOccured))
+      );
+    }
+  };
+
+  // Render each notification item
   const renderItem = ({ item }) => (
     <View style={styles.notificationCard}>
       <Image
-        source={require('../assets/avatar.png')}
+        source={item.avatar ? { uri: item.avatar } : require('../assets/avatar.png')}
         style={styles.avatar}
       />
       <View style={styles.notificationContent}>
         <Text style={styles.notificationMessage}>
-          <Text style={styles.notificationType}>{item.type}: </Text>
-          Case ID: {item.caseID} - {item.status}
+          <Text style={styles.notificationType}>Incidents: </Text>
+          {item.incidentNames && item.incidentNames.length > 0
+            ? item.incidentNames.join(', ')
+            : 'Unknown'}
+        </Text>
+        <Text style={styles.notificationDetails}>
+          Case ID: {item.caseID} - Status: {item.status}
         </Text>
         <Text style={styles.notificationDate}>
           Date Occurred: {item.dateOccured}
@@ -97,10 +119,14 @@ const Notification = () => {
         <ActivityIndicator size="large" color="#800000" style={styles.loader} />
       ) : (
         <>
-
           <View style={styles.filterContainer}>
             <Text style={styles.filterText}>Filter by:</Text>
-            <TouchableOpacity style={styles.filterButton}>
+            <TouchableOpacity
+              style={styles.filterButton}
+              onPress={() =>
+                applyFilter(filter === 'Latest' ? 'Oldest' : 'Latest')
+              }
+            >
               <Text style={styles.filterButtonText}>{filter}</Text>
               <Icon name="arrow-drop-down" size={20} color="#fff" />
             </TouchableOpacity>
@@ -137,11 +163,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     marginLeft: 15,
-  },
-  welcomeText: {
-    fontSize: 16,
-    color: '#800000',
-    margin: 10,
   },
   filterContainer: {
     flexDirection: 'row',
@@ -202,6 +223,11 @@ const styles = StyleSheet.create({
   notificationType: {
     fontWeight: 'bold',
     color: '#800000',
+  },
+  notificationDetails: {
+    fontSize: 12,
+    color: '#555',
+    marginTop: 2,
   },
   notificationDate: {
     marginTop: 5,
