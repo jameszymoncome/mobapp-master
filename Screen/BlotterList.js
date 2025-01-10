@@ -10,8 +10,9 @@ import {
 } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import axios from "axios";
+import { printAsync, printToFileAsync } from 'expo-print';
 
-const BlotterList = () => {
+const BlotterList = ({ navigation, item }) => {
   const [blotterData, setBlotterData] = useState([]);
   const [searchText, setSearchText] = useState("");
   const [loading, setLoading] = useState(true);
@@ -47,29 +48,25 @@ const BlotterList = () => {
 
   // Function to handle visibility icon click
   const handleVisibilityClick = (caseID) => {
-    Alert.alert("Incident ID:", caseID);
+    navigation.navigate('CaseReport', { caseID });
   };
 
   const renderBlotterItem = ({ item }) => (
     <View style={styles.row}>
       <Text style={styles.cell}>{item.caseID}</Text>
       <Text style={styles.cell}>{item.dateOccured}</Text>
-      <Text style={styles.cell}>{item.type}</Text>
       <Text style={styles.cell}>{item.status}</Text>
-      <Text style={styles.cell}>{item.processedBy}</Text>
+      <Text style={styles.cell}>{item.proccess}</Text>
       <View style={styles.actionCell}>
         <TouchableOpacity onPress={() => handleVisibilityClick(item.caseID)}>
           <Icon name="visibility" size={20} color="#000" />
-        </TouchableOpacity>
-        <TouchableOpacity style={{ marginLeft: 10 }}>
-          <Icon name="print" size={20} color="#000" />
         </TouchableOpacity>
       </View>
     </View>
   );
 
   const filteredData = blotterData.filter((item) =>
-    item.processedBy?.toLowerCase().includes(searchText.toLowerCase())
+    item.proccess?.toLowerCase().includes(searchText.toLowerCase())
   );
 
   if (loading) {
@@ -79,6 +76,75 @@ const BlotterList = () => {
   if (error) {
     return <Text>{error}</Text>;
   }
+
+  const printBlotter = async () => {
+    if (blotterData.length === 0) {
+      Alert.alert('No data available to print.');
+      return;
+    }
+
+    const htmlTable = `
+      <html>
+        <head>
+          <style>
+            table {
+              width: 100%;
+              border-collapse: collapse;
+            }
+            th, td {
+              border: 1px solid #ddd;
+              padding: 8px;
+              text-align: center;
+            }
+            th {
+              background-color: #800000;
+              color: white;
+            }
+            h2 {
+              text-align: center;
+              padding-top: 15px;
+            }
+          </style>
+        </head>
+        <body>
+          <h2>Blotter Data</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Incident ID</th>
+                <th>Date Occurred</th>
+                <th>Status</th>
+                <th>Process</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${blotterData
+                .map(item => `
+                  <tr>
+                    <td>${item.caseID}</td>
+                    <td>${item.dateOccured}</td>
+                    <td>${item.status}</td>
+                    <td>${item.proccess}</td>
+                  </tr>
+                `)
+                .join('')}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `;
+
+    try {
+      const file = await printToFileAsync({
+        html: htmlTable,
+        base64: false,
+      });
+
+      await printAsync({ uri: file.uri });
+    } catch (error) {
+      console.error('Error printing blotter:', error);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -101,7 +167,7 @@ const BlotterList = () => {
       </View>
 
       <View style={styles.tableHeader}>
-        {["Incident ID", "Date", "Type", "Status", "Reported By", "Action"].map((header) => (
+        {["Incident ID", "Date", "Status", "Reported By", "Action"].map((header) => (
           <Text key={header} style={styles.headerCell}>{header}</Text>
         ))}
       </View>
@@ -112,13 +178,13 @@ const BlotterList = () => {
         <FlatList
           data={filteredData}
           renderItem={renderBlotterItem}
-          keyExtractor={(item) => String(item.id)}
+          keyExtractor={(item) => String(item.caseID)}
           style={styles.tableBody}
         />
       )}
 
-      <TouchableOpacity style={styles.addButton}>
-        <Icon name="add" size={30} color="#fff" />
+      <TouchableOpacity style={styles.addButton} onPress={printBlotter}>
+        <Icon name="print" size={30} color="#fff" />
       </TouchableOpacity>
     </View>
   );

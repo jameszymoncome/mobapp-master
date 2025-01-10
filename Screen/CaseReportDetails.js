@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,17 +6,102 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  FlatList,
+  Alert
 } from "react-native";
 import { Picker } from "@react-native-picker/picker"; // Dropdown picker
 import { Ionicons } from "@expo/vector-icons"; // For icons
+import axios from "axios";
 
-export default function CaseReportDetails() {
+export default function CaseReportDetails({ route }) {
+  const [inciDate, setInciDate] = useState("");
+  const [inciTime, setInciTime] = useState("");
+  const [placeInci, setPlaceInci] = useState("");
   const [incidentType, setIncidentType] = useState("");
-  const [proceedTo, setProceedTo] = useState("");
-  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [newDescription, setNewDescription] = useState("");
+  const [complainName, setComplainName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
-  const [description, setDescription] = useState("");
+  const [respondentData, setRespondentData] = useState([]);
+  const [status, setStatus] = useState("");
+  const [proceedTo, setProceedTo] = useState("");
+  const [isVisible, setIsVisible] = useState(true);
+  const { caseID } = route.params;
+  // const [respondentName, setRespondentName] = useState([
+  //   { id: '1', name: 'John Doe' },
+  //   { id: '2', name: 'Jane Smith' },
+  //   { id: '3', name: 'Michael Johnson' },
+  // ]);
+
+  useEffect(() => {
+    const fetchBloterData = async () => {
+      try {
+        const response = await axios.post("http://brgyapp.lesterintheclouds.com/getReportedCase.php", {caseID});
+        if (response.data.status === "success") {
+          setInciDate(response.data.data.dateOccured);
+          setInciTime(response.data.data.timeOccured);
+          setPlaceInci(response.data.data.place);
+          setIncidentType(response.data.data.incidentNames);
+          setDescription(response.data.data.description);
+          setComplainName(response.data.data.complainantName);
+          setPhone(response.data.data.contact);
+          setAddress(response.data.data.addressCom);
+          setStatus(response.data.data.status);
+          const respondents = response.data.data.respondents;
+          const parsedRespondents = respondents ? respondents.split(', ').map(item => {
+            const [id, name] = item.split(':');
+            return { respondentID: id, name: name };
+          }) : [];
+          setRespondentData(parsedRespondents);
+          if(response.data.data.status == 'Pending'){
+            setIsVisible(!isVisible);
+          }
+          
+        } else {
+          console.log('No data found for this user.');
+        }
+      } catch (error) {
+        console.error('Error response:', error.response);
+      }
+    }
+
+    fetchBloterData();
+  }, [caseID]);
+
+  const handleAccept = async () => {
+    Alert.alert(
+        "Confirmation",
+        "Are you sure you want to accept this report?",
+        [
+            {
+                text: "Cancel",
+                onPress: () => console.log("Cancelled"),
+                style: "cancel",
+            },
+            {
+                text: "OK",
+                onPress: async () => {
+                    try {
+                        const response = await axios.post("http://brgyapp.lesterintheclouds.com/insertBlotter.php", {
+                            caseID: caseID,
+                            new_description: newDescription === "" ? description : newDescription,
+                        });
+                        if (response.data.status === "success") {
+                            Alert.alert("Report Accepted", response.data.message);
+                        } else {
+                            Alert.alert("Error", response.data.message);
+                        }
+                    } catch (error) {
+                        console.error('Error while accepting report:', error);
+                    }
+                },
+            },
+        ],
+        { cancelable: false }
+    );
+};
+
 
   return (
     <ScrollView style={styles.container}>
@@ -31,7 +116,7 @@ export default function CaseReportDetails() {
       {/* Incident No */}
       <View style={styles.section}>
         <Text style={styles.label}>
-          Incident No.: <Text style={styles.boldText}>INC - 2024001</Text>
+          Incident No.: <Text style={styles.boldText}>{caseID}</Text>
         </Text>
       </View>
 
@@ -39,24 +124,25 @@ export default function CaseReportDetails() {
       <View style={styles.row}>
         <View style={styles.halfInput}>
           <Text style={styles.label}>Incident Date:</Text>
-          <TextInput style={styles.input} placeholder="MM/DD/YYYY" />
+          <TextInput style={styles.input} editable={false} value={inciDate} placeholder="MM/DD/YYYY" />
         </View>
         <View style={styles.timeInput}>
           <Text style={styles.label}>Incident Time:</Text>
-          <TextInput style={styles.input} placeholder="00:00" />
+          <TextInput style={styles.input} editable={false} value={inciTime} placeholder="00:00" />
         </View>
       </View>
 
       {/* Place of Incident */}
       <View style={styles.section}>
         <Text style={styles.label}>Place of Incident: *</Text>
-        <TextInput style={styles.input} placeholder="Enter place of incident" />
+        <TextInput style={styles.input} editable={false} value={placeInci} placeholder="Enter place of incident" />
       </View>
 
       {/* Type of Incident */}
       <View style={styles.section}>
         <Text style={styles.label}>Type of Incident: *</Text>
-        <Picker
+        <Text style={styles.textItem}>{incidentType}</Text>
+        {/* <Picker
           selectedValue={incidentType}
           onValueChange={(itemValue) => setIncidentType(itemValue)}
           style={styles.picker}
@@ -65,18 +151,21 @@ export default function CaseReportDetails() {
           <Picker.Item label="Theft" value="theft" />
           <Picker.Item label="Assault" value="assault" />
           <Picker.Item label="Accident" value="accident" />
-        </Picker>
+        </Picker> */}
       </View>
 
       {/* Description */}
       <View style={styles.section}>
         <Text style={styles.label}>Description:</Text>
+        <Text style={{marginLeft: 5}}>
+          Old Description: <Text style={{fontStyle: 'italic'}}>{description}</Text>
+        </Text>
         <TextInput
           style={[styles.input, styles.description]}
           multiline
           placeholder="Enter details here..."
-          value={description}
-          onChangeText={setDescription}
+          value={newDescription}
+          onChangeText={setNewDescription}
         />
       </View>
 
@@ -88,8 +177,8 @@ export default function CaseReportDetails() {
         <TextInput
           style={styles.input}
           placeholder="Enter name"
-          value={name}
-          onChangeText={setName}
+          value={complainName}
+          editable={false}
         />
       </View>
 
@@ -100,7 +189,7 @@ export default function CaseReportDetails() {
           keyboardType="phone-pad"
           placeholder="Enter phone number"
           value={phone}
-          onChangeText={setPhone}
+          editable={false}
         />
       </View>
 
@@ -110,7 +199,22 @@ export default function CaseReportDetails() {
           style={styles.input}
           placeholder="Enter address"
           value={address}
-          onChangeText={setAddress}
+          editable={false}
+        />
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Respondent Information:</Text>
+        <Text style={styles.tableDesign}>Name of Respondent</Text>
+        <FlatList
+          scrollEnabled = {false}
+          data={respondentData}
+          keyExtractor={(item, index) => index.toString()}
+          renderItem={({ item }) => (
+            <TouchableOpacity>
+              <Text style={{ padding: 10 }}>{item.name}</Text>
+            </TouchableOpacity>
+          )}
         />
       </View>
 
@@ -122,28 +226,29 @@ export default function CaseReportDetails() {
           <Text style={styles.uploadText}>Upload Photos/Video</Text>
         </TouchableOpacity>
       </View>
-
-      {/* Proceed To */}
-      <View style={styles.section}>
-        <Text style={styles.label}>Proceed to: *</Text>
-        <Picker
-          selectedValue={proceedTo}
-          onValueChange={(itemValue) => setProceedTo(itemValue)}
-          style={styles.picker}
-        >
-          <Picker.Item label="Select an option" value="" />
-          <Picker.Item label="Police Department" value="police" />
-          <Picker.Item label="Court" value="court" />
-        </Picker>
-      </View>
+      
+      {isVisible && (
+        <View style={styles.section} >
+          <Text style={styles.label}>Proceed to: *</Text>
+          <Picker
+            selectedValue={proceedTo}
+            onValueChange={(itemValue) => setProceedTo(itemValue)}
+            style={styles.picker}
+          >
+            <Picker.Item label="Select an option" value="" />
+            <Picker.Item label="Police Department" value="police" />
+            <Picker.Item label="Court" value="court" />
+          </Picker>
+        </View>
+      )}
 
       {/* Buttons */}
       <View style={styles.buttonContainer}>
         <TouchableOpacity style={styles.cancelButton}>
           <Text style={styles.buttonText}>Cancel</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.saveButton}>
-          <Text style={styles.buttonText}>Save</Text>
+        <TouchableOpacity style={styles.saveButton} onPress={handleAccept}>
+          <Text style={styles.buttonText}>{status === "Pending" ? "Accept" : "Save"}</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -254,5 +359,35 @@ const styles = StyleSheet.create({
   },
   timeInput: {
     width: "48%",
+  },
+  tableDesign: {
+    textAlign: 'center',
+    width: '100%',
+    backgroundColor: '#750000',
+    color: 'white',
+    fontSize: 18,
+    borderTopRightRadius: 10,
+    borderTopLeftRadius: 10
+  },
+  rowDesign: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    padding: 10,
+    borderBottomRightRadius: 10,
+    borderBottomLeftRadius: 10,
+    backgroundColor: "#fff",
+    fontSize: 18,
+    textAlign: 'center'
+  },
+  textItem : {
+    flex: 1,
+    fontSize: 14,
+    marginHorizontal: 8
+  },
+  itemsName: {
+    fontSize: 18,
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ccc',
   },
 });
