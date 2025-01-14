@@ -12,6 +12,8 @@ import {
 import { Picker } from "@react-native-picker/picker"; // Dropdown picker
 import { Ionicons } from "@expo/vector-icons"; // For icons
 import axios from "axios";
+import { Dropdown, MultiSelect } from 'react-native-element-dropdown';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 export default function CaseReportDetails({ route }) {
   const [inciDate, setInciDate] = useState("");
@@ -28,6 +30,15 @@ export default function CaseReportDetails({ route }) {
   const [proceedTo, setProceedTo] = useState("");
   const [isVisible, setIsVisible] = useState(true);
   const { caseID } = route.params;
+  const [newdate, dateSelected] = useState('MM/DD/YYYY')
+  const [newhour, hourSelected] = useState('HH')
+  const [newminute, minuteSelected] = useState('MM')
+  const [newPeriod, periodSelected] = useState('AM')
+  const [show, setShow] = useState(false);
+  const [mode, setMode] = useState('date');
+  const [date, setDate] = useState(new Date());
+  const [barangayOfficial, setBarangayOfficial] = useState([]);
+  const [selectedBarangayOfficial, setSelectedBarangayOfficial] = useState([]);
   // const [respondentName, setRespondentName] = useState([
   //   { id: '1', name: 'John Doe' },
   //   { id: '2', name: 'Jane Smith' },
@@ -35,6 +46,7 @@ export default function CaseReportDetails({ route }) {
   // ]);
 
   useEffect(() => {
+    getOfficial();
     const fetchBloterData = async () => {
       try {
         const response = await axios.post("http://brgyapp.lesterintheclouds.com/getReportedCase.php", {caseID});
@@ -48,6 +60,7 @@ export default function CaseReportDetails({ route }) {
           setPhone(response.data.data.contact);
           setAddress(response.data.data.addressCom);
           setStatus(response.data.data.status);
+          setProceedTo(response.data.data.status);
           const respondents = response.data.data.respondents;
           const parsedRespondents = respondents ? respondents.split(', ').map(item => {
             const [id, name] = item.split(':');
@@ -68,6 +81,46 @@ export default function CaseReportDetails({ route }) {
 
     fetchBloterData();
   }, [caseID]);
+
+  const renderItem = (item) =>{
+    return(
+      <View style={styles.itemDropdown}>
+        <Text style={styles.textItems}>{item.position}</Text>
+      </View>
+    )
+  }
+
+  const showMode = (currentMode) => {
+    setShow(true);
+    setMode(currentMode);
+  }
+
+  const onChanges = (event, selectedDate) => {
+    if(event.type === 'set'){
+        if(mode == 'date'){
+            const currentDate = selectedDate || date;
+            let tempDate = new Date(currentDate);
+            let fDate = (tempDate.getMonth() + 1) + '/' + tempDate.getDate() + '/' + tempDate.getFullYear();
+            dateSelected(fDate);
+        }
+        else{
+            const currentDate = selectedDate || date;
+            let tempDate = new Date(currentDate);
+            let sHour = tempDate.getHours();
+            sHour = sHour % 12;
+            sHour = sHour ? sHour : 12;
+            hourSelected(sHour); 
+
+            let sMinute = tempDate.getMinutes();
+            let formattedMinute = sMinute.toString().padStart(2, '0');
+            minuteSelected(formattedMinute);
+
+            let period = tempDate.getHours() >= 12 ? 'PM' : 'AM';
+            periodSelected(period);
+        }
+    }
+    setShow(false);
+  };
 
   const handleAccept = async () => {
     Alert.alert(
@@ -101,6 +154,17 @@ export default function CaseReportDetails({ route }) {
         { cancelable: false }
     );
 };
+
+const getOfficial = () => {
+  axios.get('http://brgyapp.lesterintheclouds.com/getOfficials.php')
+  .then(response => {
+    setBarangayOfficial(response.data);
+  })
+  .catch(error => {
+    console.error('Error fetching data:', error);
+  })
+}
+
 
 
   return (
@@ -158,13 +222,13 @@ export default function CaseReportDetails({ route }) {
       <View style={styles.section}>
         <Text style={styles.label}>Description:</Text>
         <Text style={{marginLeft: 5}}>
-          Old Description: <Text style={{fontStyle: 'italic'}}>{description}</Text>
+          {status === "Under Investigation" ? "" : <>Old Description: <Text style={{fontStyle: 'italic'}}>{description}</Text></>} 
         </Text>
         <TextInput
           style={[styles.input, styles.description]}
           multiline
           placeholder="Enter details here..."
-          value={newDescription}
+          value={status ==! "Pending" ? <> <Text style={{fontStyle: 'italic'}}> {newDescription.Text}</Text></> : ""}
           onChangeText={setNewDescription}
         />
       </View>
@@ -226,7 +290,7 @@ export default function CaseReportDetails({ route }) {
           <Text style={styles.uploadText}>Upload Photos/Video</Text>
         </TouchableOpacity>
       </View>
-      
+       
       {isVisible && (
         <View style={styles.section} >
           <Text style={styles.label}>Proceed to: *</Text>
@@ -236,9 +300,94 @@ export default function CaseReportDetails({ route }) {
             style={styles.picker}
           >
             <Picker.Item label="Select an option" value="" />
-            <Picker.Item label="Police Department" value="police" />
-            <Picker.Item label="Court" value="court" />
+            <Picker.Item label="Under Investigation" value="Under Investigation" />
+            <Picker.Item label="Mediation" value="Mediation" />
+            <Picker.Item label="First Hearing" value="First Hearing" />
           </Picker>
+        </View>
+      )}
+
+{isVisible && (
+        <View style={{marginTop: 10, marginHorizontal: 15,}}>
+          <Text>Resolution Schedule</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', marginBottom: 5, marginLeft: 15 }}>
+            <Text style={{ marginRight: 5 }}>Date:</Text>
+            <TouchableOpacity onPress={() => showMode('date')}>
+              <View style={styles.datetimeContainer}>
+                <Text>{newdate}</Text>
+                <Ionicons name="calendar-outline" style={{ color: '#710808', marginLeft: 5 }} />
+              </View>
+            </TouchableOpacity>
+          </View>
+          <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', marginBottom: 5, marginLeft: 15}}>
+            <Text style={{ marginRight: 5 }}>Time:</Text>
+            <TouchableOpacity onPress={() => showMode('time')}>
+              <View style={{flexDirection:'row'}}>
+                <Text style={styles.timeDesign}>{newhour}</Text>
+                <Text>:</Text>
+                <Text style={styles.timeDesign}>{newminute}</Text>
+                <View style={styles.timeContainer}>
+                  <Text>{newPeriod}</Text>
+                </View>
+                <Ionicons name='time-outline' size={15} style={styles.iconsStyle}/>
+              </View>
+            </TouchableOpacity>
+          </View>
+          {show && (
+            <DateTimePicker
+                testID='dateTimePicker'
+                value={date}
+                mode={mode}
+                is24Hour={false}
+                maximumDate={new Date()}
+                onChange={(event, selectedDate) => {
+                    const currentDate = new Date();
+                    if (mode === 'time' && selectedDate) {
+                    // Check if the selected date is today
+                    const isToday =
+                        date.getDate() === currentDate.getDate() &&
+                        date.getMonth() === currentDate.getMonth() &&
+                        date.getFullYear() === currentDate.getFullYear();
+
+                        if(isToday && selectedDate.toLocaleTimeString() > currentDate.toLocaleTimeString()){
+                        console.log("hiii");
+                        Alert.alert("Invalid Time",
+                            "You can't select a future time!",
+                            [
+                            {
+                                text: "OK",
+                                onPress: () => {
+                                hourSelected('HH');
+                                minuteSelected('MM');
+                                periodSelected('AM');
+                                }
+                            }
+                            ],
+                            { cancelable: false });
+                        }
+                    }
+                    onChanges(event, selectedDate);
+                }}
+            />
+          )}
+          <View>
+            <Text>Dispute Resolution Officer:</Text>
+            <Picker
+              selectedValue={selectedBarangayOfficial}
+              onValueChange={(itemValue) => {
+                console.log('Selected ID:', itemValue); // Log the selected ID
+                setSelectedBarangayOfficial(itemValue);
+              }}
+              style={styles.picker}
+            >
+              <Picker.Item label="Select" value="" />
+              {barangayOfficial.map((item) => (
+                <Picker.Item key={item.id} label={item.position} value={item.id.toString()} />
+              ))}
+            </Picker>
+          </View>
+          
+          
         </View>
       )}
 
@@ -389,5 +538,40 @@ const styles = StyleSheet.create({
     padding: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#ccc',
+  },
+
+  dropdown: {
+    width: '100%',
+    height: 30,
+    backgroundColor: '#FFFFFF',
+    borderWidth:1,
+    borderColor: "#ccc",
+    borderRadius: 5,
+    paddingHorizontal: 8
+  },
+  dropdownContainer: {
+    borderColor: '#888', // Border for the options container
+    borderWidth: 1,
+    borderRadius: 10, // Rounded edges
+    backgroundColor: '#ffffff', // Light background for better contrast
+    shadowColor: '#000', // Add shadow to give a floating effect
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 4, // For Android shadow
+    marginTop: 5, // Add spacing between dropdown and options container
+  },
+  placeholderStyle: {  
+    fontSize: 13,
+    color: 'gray'
+  },
+  selectedTextStyle: {
+    fontSize: 13,
+    color: 'black'
+  },
+  inputSearchStyle: {
+    height: 40,
+    fontSize: 13,
+    color: 'black',
   },
 });

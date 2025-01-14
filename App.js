@@ -8,6 +8,8 @@ import CaseReportDetails from './Screen/CaseReportDetails';
 import BlotterList from './Screen/BlotterList';
 import Notification from './Screen/Notification';
 import Login from './Screen/Login';
+import Blotter from './Screen/Blotter';
+import BlotterCalendar from './Screen/BlotterCalendar';
 
 export default function App() {
 
@@ -22,6 +24,8 @@ export default function App() {
         <Stack.Screen name="BlotterList" component={BlotterList} />
         <Stack.Screen name="Notification" component={Notification} />
         <Stack.Screen name="Login" component={Login} />
+        <Stack.Screen name="Blotter" component={Blotter} />
+        <Stack.Screen name="BlotterCalendar" component={BlotterCalendar} />
       </Stack.Navigator>
 
   </NavigationContainer>

@@ -55,6 +55,7 @@ const BlotterList = ({ navigation, item }) => {
     <View style={styles.row}>
       <Text style={styles.cell}>{item.caseID}</Text>
       <Text style={styles.cell}>{item.dateOccured}</Text>
+      <Text style={styles.cell}>{item.timeOccured}</Text>
       <Text style={styles.cell}>{item.status}</Text>
       <Text style={styles.cell}>{item.proccess}</Text>
       <View style={styles.actionCell}>
@@ -123,6 +124,7 @@ const BlotterList = ({ navigation, item }) => {
                   <tr>
                     <td>${item.caseID}</td>
                     <td>${item.dateOccured}</td>
+                    <td>${item.timeOccured}</td>
                     <td>${item.status}</td>
                     <td>${item.proccess}</td>
                   </tr>
@@ -167,7 +169,7 @@ const BlotterList = ({ navigation, item }) => {
       </View>
 
       <View style={styles.tableHeader}>
-        {["Incident ID", "Date", "Status", "Reported By", "Action"].map((header) => (
+        {["Incident ID", "Date", "Time", "Status", "Reported By", "Action"].map((header) => (
           <Text key={header} style={styles.headerCell}>{header}</Text>
         ))}
       </View>

@@ -227,6 +227,19 @@ const ExampleHomeScreen = ({ navigation }) => {
       <View style={styles.buttonContainer}>
         <Button title="Print Request" onPress={handlePrint1}/>
       </View>
+
+      <View style={styles.buttonContainer}>
+        <Button
+          title="Blotter"
+          onPress={() => navigation.navigate("Blotter")}
+        />
+      </View>
+      <View style={styles.buttonContainer}>
+        <Button
+          title="BlotterCalendar"
+          onPress={() => navigation.navigate("BlotterCalendar")}
+        />
+      </View>
       
       <View style={styles.buttonContainer}>
         <Button
