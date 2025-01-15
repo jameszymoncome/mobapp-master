@@ -14,8 +14,10 @@ import { Ionicons } from "@expo/vector-icons"; // For icons
 import axios from "axios";
 import { Dropdown, MultiSelect } from 'react-native-element-dropdown';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useNavigation } from '@react-navigation/native';
 
 export default function CaseReportDetails({ route }) {
+  const navigation = useNavigation(); 
   const [inciDate, setInciDate] = useState("");
   const [inciTime, setInciTime] = useState("");
   const [placeInci, setPlaceInci] = useState("");
@@ -26,9 +28,12 @@ export default function CaseReportDetails({ route }) {
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [respondentData, setRespondentData] = useState([]);
+  const [evidence, setEvidence] = useState([]);
   const [status, setStatus] = useState("");
   const [proceedTo, setProceedTo] = useState("");
+  const [updateProceedTo , setUpdateProceedTo] = useState("");
   const [isVisible, setIsVisible] = useState(true);
+  const [hideButton, setHideButton] = useState(true);
   const { caseID } = route.params;
   const [newdate, dateSelected] = useState('MM/DD/YYYY')
   const [newhour, hourSelected] = useState('HH')
@@ -38,7 +43,7 @@ export default function CaseReportDetails({ route }) {
   const [mode, setMode] = useState('date');
   const [date, setDate] = useState(new Date());
   const [barangayOfficial, setBarangayOfficial] = useState([]);
-  const [selectedBarangayOfficial, setSelectedBarangayOfficial] = useState([]);
+  const [selectedBarangayOfficial, setSelectedBarangayOfficial] = useState("");
   // const [respondentName, setRespondentName] = useState([
   //   { id: '1', name: 'John Doe' },
   //   { id: '2', name: 'Jane Smith' },
@@ -61,14 +66,24 @@ export default function CaseReportDetails({ route }) {
           setAddress(response.data.data.addressCom);
           setStatus(response.data.data.status);
           setProceedTo(response.data.data.status);
+          console.log(response.data.data.status);
+          setUpdateProceedTo(response.data.data.status);
           const respondents = response.data.data.respondents;
           const parsedRespondents = respondents ? respondents.split(', ').map(item => {
             const [id, name] = item.split(':');
             return { respondentID: id, name: name };
           }) : [];
           setRespondentData(parsedRespondents);
+          const transformedEvidence = response.data.data.evidenceIDs.split(',').map((id) => ({
+            evidenceUrl: `Evidence ${id}`,
+          }));
+          setEvidence(transformedEvidence);
           if(response.data.data.status == 'Pending'){
             setIsVisible(!isVisible);
+          }
+          else if(response.data.data.status == 'Close Case'){
+            setIsVisible(!isVisible);
+            setHideButton(!hideButton);
           }
           
         } else {
@@ -97,6 +112,7 @@ export default function CaseReportDetails({ route }) {
 
   const onChanges = (event, selectedDate) => {
     if(event.type === 'set'){
+      setDate(selectedDate || date);
         if(mode == 'date'){
             const currentDate = selectedDate || date;
             let tempDate = new Date(currentDate);
@@ -122,10 +138,41 @@ export default function CaseReportDetails({ route }) {
     setShow(false);
   };
 
+
   const handleAccept = async () => {
+    if(status != 'Pending'){
+      if(newDescription === ''){
+        Alert.alert("Error", "Please insert Description field.");
+        return;
+      }
+      if(proceedTo === updateProceedTo){
+        Alert.alert("Error", "Please Update the 'Procced to' fields.");
+        return;
+      }
+      if(newdate === 'MM/DD/YYYY'){
+        Alert.alert("Error", "Please select Date!");
+        return;
+      }
+      if(newhour === 'HH' && newminute === 'MM'){
+        Alert.alert("Error", "Please select Time!");
+        return;
+      }
+      if(selectedBarangayOfficial === ''){
+        Alert.alert("Error", "Please select Dispute resolution officer!");
+        return;
+      }
+    }
+    else{
+      if(newDescription === ''){
+        Alert.alert("Error", "Please insert Description field.");
+        return;
+      }
+    }
+    console.log(status);
+
     Alert.alert(
         "Confirmation",
-        "Are you sure you want to accept this report?",
+        status === "Pending" ? "Are you sure you want to accept this report?" : `Are you sure you want to put this in ${updateProceedTo} `,
         [
             {
                 text: "Cancel",
@@ -135,15 +182,33 @@ export default function CaseReportDetails({ route }) {
             {
                 text: "OK",
                 onPress: async () => {
+                  console.log('submitted');
                     try {
                         const response = await axios.post("http://brgyapp.lesterintheclouds.com/insertBlotter.php", {
                             caseID: caseID,
-                            new_description: newDescription === "" ? description : newDescription,
+                            status: status,
+                            new_description: newDescription,
+                            proceed: updateProceedTo,
+                            dates: newdate,
+                            newhour: newhour,
+                            newminute: newminute,
+                            newPeriod: newPeriod,
+                            selectedBarangayOfficial: selectedBarangayOfficial
                         });
                         if (response.data.status === "success") {
-                            Alert.alert("Report Accepted", response.data.message);
+                          Alert.alert(
+                            "Report Accepted",
+                            response.data.message,
+                            [
+                              {
+                                text: "OK",
+                                onPress: () => navigation.replace('BlotterList'),
+                              },
+                            ]
+                          );
+
                         } else {
-                            Alert.alert("Error", response.data.message);
+                          Alert.alert("Error", response.data.message);
                         }
                     } catch (error) {
                         console.error('Error while accepting report:', error);
@@ -155,17 +220,94 @@ export default function CaseReportDetails({ route }) {
     );
 };
 
-const getOfficial = () => {
-  axios.get('http://brgyapp.lesterintheclouds.com/getOfficials.php')
-  .then(response => {
-    setBarangayOfficial(response.data);
-  })
-  .catch(error => {
-    console.error('Error fetching data:', error);
-  })
-}
+  const getOfficial = () => {
+    axios.get('http://brgyapp.lesterintheclouds.com/getOfficials.php')
+    .then(response => {
+      setBarangayOfficial(response.data);
+    })
+    .catch(error => {
+      console.error('Error fetching data:', error);
+    })
+  }
 
-
+  const renderPickerItems = () => {
+    let items = [];
+    switch (proceedTo) {
+      case 'Approved':
+        items = [
+          { label: 'Select an option', value: proceedTo },
+          { label: 'Under Investigation', value: 'Under Investigation' },
+          { label: 'Mediation', value: 'Mediation' },
+          { label: '1st Hearing', value: '1st Hearing' }
+        ];
+      case 'Under Investigation':
+        items = [
+          { label: 'Select an option', value: proceedTo },
+          { label: 'Re- evaluate', value: 'Re- evaluate' },
+          { label: 'Mediation', value: 'Mediation' },
+          { label: '1st Hearing', value: '1st Hearing' },
+          { label: 'Resolved', value: 'Resolved' },
+          { label: 'Referred to Higher Authority', value: 'Referred to Higher Authority' }
+        ];
+      case 'Re- evaluate':
+        items = [
+          { label: 'Select an option', value: proceedTo },
+          { label: 'Under Investigation', value: 'Under Investigation' },
+          { label: 'Resolved', value: 'Resolved' },
+          { label: 'Close case', value: 'Close case' }
+        ];
+      case 'Mediation':
+        items = [
+          { label: 'Select an option', value: proceedTo },
+          { label: 'Resolved', value: 'Resolved' },
+          { label: '1st Hearing', value: '1st Hearing' },
+          { label: 'Referred to Higher Authority', value: 'Referred to Higher Authority' }
+        ];
+        break;
+      case '1st Hearing':
+        items = [
+          { label: 'Select an option', value: proceedTo },
+          { label: 'Resolved', value: 'Resolved' },
+          { label: '2nd Hearing', value: '2nd Hearing' },
+          { label: 'Referred to Higher Authority', value: 'Referred to Higher Authority' }
+        ];
+        break;
+      case '2nd Hearing':
+        items = [
+          { label: 'Select an option', value: proceedTo },
+          { label: 'Resolved', value: 'Resolved' },
+          { label: '3rd Hearing', value: '3rds Hearing' },
+          { label: 'Referred to Higher Authority', value: 'Referred to Higher Authority' }
+        ];
+        break;
+      case '3rd Hearing':
+        items = [
+          { label: 'Select an option', value: proceedTo },
+          { label: 'Resolved', value: 'Resolved' },
+          { label: 'Referred to Higher Authority', value: 'Referred to Higher Authority' }
+        ];
+        break;
+      case 'Resolved':
+        items = [
+          { label: 'Select an option', value: proceedTo },
+          { label: 'Close Case', value: 'Close Case' }
+        ];
+        break;
+      case 'Referred to Higher Authority':
+        items = [
+          { label: 'Select an option', value: proceedTo },
+          { label: 'Under Investigation(by higher authority)', value: 'Under Investigation(by higher authority)' },
+          { label: 'Resolved', value: 'Resolved' },
+          { label: 'Close Case', value: 'Close Case' }
+        ];
+        break;
+      default:
+        return <Picker.Item label="Select an option" value="" />;
+    }
+    return items.map((item, index) => (
+      <Picker.Item key={index} label={item.label} value={item.value} />
+    ));
+  };
 
   return (
     <ScrollView style={styles.container}>
@@ -222,13 +364,13 @@ const getOfficial = () => {
       <View style={styles.section}>
         <Text style={styles.label}>Description:</Text>
         <Text style={{marginLeft: 5}}>
-          {status === "Under Investigation" ? "" : <>Old Description: <Text style={{fontStyle: 'italic'}}>{description}</Text></>} 
+          Old Description: <Text style={{fontStyle: 'italic'}}>{description}</Text>
         </Text>
         <TextInput
           style={[styles.input, styles.description]}
           multiline
           placeholder="Enter details here..."
-          value={status ==! "Pending" ? <> <Text style={{fontStyle: 'italic'}}> {newDescription.Text}</Text></> : ""}
+          value={newDescription}
           onChangeText={setNewDescription}
         />
       </View>
@@ -270,45 +412,67 @@ const getOfficial = () => {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Respondent Information:</Text>
         <Text style={styles.tableDesign}>Name of Respondent</Text>
-        <FlatList
-          scrollEnabled = {false}
-          data={respondentData}
-          keyExtractor={(item, index) => index.toString()}
-          renderItem={({ item }) => (
-            <TouchableOpacity>
-              <Text style={{ padding: 10 }}>{item.name}</Text>
-            </TouchableOpacity>
-          )}
-        />
+        {respondentData && respondentData.length > 0 ? (
+          <FlatList
+            scrollEnabled={false}
+            data={respondentData}
+            keyExtractor={(item, index) => index.toString()}
+            renderItem={({ item }) => (
+              <TouchableOpacity>
+                <Text style={{ padding: 10, textAlign: 'center' }}>{item.name}</Text>
+              </TouchableOpacity>
+            )}
+          />
+        ) : (
+          <Text style={{ padding: 10, textAlign: 'center', color: 'gray' }}>
+            No respondents available.
+          </Text>
+        )}
       </View>
 
-      {/* Upload Photos */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Upload Photos/Videos (Optional)</Text>
-        <TouchableOpacity style={styles.uploadButton}>
-          <Ionicons name="cloud-upload-outline" size={24} color="#750000" />
-          <Text style={styles.uploadText}>Upload Photos/Video</Text>
-        </TouchableOpacity>
-      </View>
-       
+      {evidence.length > 0 ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Upload Photos/Videos (Optional)</Text>
+          <FlatList
+            scrollEnabled={false}
+            data={evidence}
+            keyExtractor={(item, index) => index.toString()}
+            renderItem={({ item }) => (
+              <TouchableOpacity>
+                <Text style={[styles.uploadButton, {textAlign: 'center'}]}>{item.evidenceUrl}</Text>
+              </TouchableOpacity>
+            )}
+          />
+        </View>
+      ) : (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Upload Photos/Videos (Optional)</Text>
+          <TouchableOpacity style={styles.uploadButton}>
+            <Ionicons name="cloud-upload-outline" size={24} color="#750000" />
+            <Text style={styles.uploadText}>No Image of Evidence</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      
       {isVisible && (
         <View style={styles.section} >
           <Text style={styles.label}>Proceed to: *</Text>
           <Picker
             selectedValue={proceedTo}
-            onValueChange={(itemValue) => setProceedTo(itemValue)}
+            onValueChange={(itemValue) => {
+              console.log('Selected Value:', itemValue);
+              setUpdateProceedTo(itemValue);
+            }}
             style={styles.picker}
           >
-            <Picker.Item label="Select an option" value="" />
-            <Picker.Item label="Under Investigation" value="Under Investigation" />
-            <Picker.Item label="Mediation" value="Mediation" />
-            <Picker.Item label="First Hearing" value="First Hearing" />
+            {renderPickerItems()}
           </Picker>
         </View>
       )}
 
-{isVisible && (
-        <View style={{marginTop: 10, marginHorizontal: 15,}}>
+      {isVisible && (
+        <View style={{marginTop: 10, marginHorizontal: 30,}}>
           <Text>Resolution Schedule</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', marginBottom: 5, marginLeft: 15 }}>
             <Text style={{ marginRight: 5 }}>Date:</Text>
@@ -375,7 +539,7 @@ const getOfficial = () => {
             <Picker
               selectedValue={selectedBarangayOfficial}
               onValueChange={(itemValue) => {
-                console.log('Selected ID:', itemValue); // Log the selected ID
+                console.log('Selected ID:', itemValue);
                 setSelectedBarangayOfficial(itemValue);
               }}
               style={styles.picker}
@@ -391,15 +555,20 @@ const getOfficial = () => {
         </View>
       )}
 
-      {/* Buttons */}
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.cancelButton}>
-          <Text style={styles.buttonText}>Cancel</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.saveButton} onPress={handleAccept}>
-          <Text style={styles.buttonText}>{status === "Pending" ? "Accept" : "Save"}</Text>
-        </TouchableOpacity>
-      </View>
+      {!hideButton ? (
+        <View style={{ alignItems: 'center', marginVertical: 10 }}>
+          <Text style={{ textAlign: 'center', color: '#750000', fontSize: 18 }}>{status}</Text>
+        </View>
+      ) : (
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity style={styles.cancelButton}>
+            <Text style={styles.buttonText}>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.saveButton} onPress={handleAccept}>
+            <Text style={styles.buttonText}>{status === "Pending" ? "Accept" : "Save"}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -444,6 +613,7 @@ const styles = StyleSheet.create({
   description: {
     height: 80,
     textAlignVertical: "top",
+    fontStyle: 'italic'
   },
   picker: {
     borderWidth: 1,
@@ -540,6 +710,63 @@ const styles = StyleSheet.create({
     borderBottomColor: '#ccc',
   },
 
+  dropdown: {
+    width: '100%',
+    height: 30,
+    backgroundColor: '#FFFFFF',
+    borderWidth:1,
+    borderColor: "#ccc",
+    borderRadius: 5,
+    paddingHorizontal: 8
+  },
+  dropdownContainer: {
+    borderColor: '#888', // Border for the options container
+    borderWidth: 1,
+    borderRadius: 10, // Rounded edges
+    backgroundColor: '#ffffff', // Light background for better contrast
+    shadowColor: '#000', // Add shadow to give a floating effect
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 4, // For Android shadow
+    marginTop: 5, // Add spacing between dropdown and options container
+  },
+  placeholderStyle: {  
+    fontSize: 13,
+    color: 'gray'
+  },
+  selectedTextStyle: {
+    fontSize: 13,
+    color: 'black'
+  },
+  inputSearchStyle: {
+    height: 40,
+    fontSize: 13,
+    color: 'black',
+  },
+  datetimeContainer: {
+    borderWidth: 1,
+    borderColor: 'CAD3DF',
+    borderRadius: 5,
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    padding: 2,
+    alignItems: 'center',
+    marginHorizontal: 5
+  },
+  timeDesign: {
+    borderWidth: 1,
+    borderColor: 'CAD3DF',
+    borderRadius: 5,
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    padding: 2,
+    alignItems: 'center',
+    marginHorizontal: 5,
+    textAlign: 'center',
+    fontStyle: 'italic',
+    color: 'gray'
+  },
   dropdown: {
     width: '100%',
     height: 30,

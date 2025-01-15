@@ -11,9 +11,8 @@ import * as ImagePicker from "expo-image-picker";
 // import * as SecureStore from 'expo-secure-store';
 import { getAuthData } from '../SecureStoreage/secureStoreHelpers';
 import { useFocusEffect } from '@react-navigation/native';
-import Icon from "react-native-vector-icons/MaterialIcons";
 
-const Blotter = ({ navigation }) => {
+const BlotterForm = ({ navigation }) => {
   const [newdate, dateSelected] = useState('MM/DD/YYYY')
   const [newhour, hourSelected] = useState('HH')
   const [newminute, minuteSelected] = useState('MM')
@@ -199,7 +198,6 @@ const Blotter = ({ navigation }) => {
     }
     else{
       if(userRole === 'resident'){
-        console.log('yowwsafhsafkjsajf');
         navigation.replace("CaseList");
       }
       else{
@@ -482,13 +480,8 @@ const Blotter = ({ navigation }) => {
   };
 
   return (
-    
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Icon name="menu" size={30} color="#fff" />
-        <Text style={styles.headerTitle}>BLOTTER FORM</Text>
-      </View>
-      <ScrollView style={{backgroundColor: '#F2F3F7', marginTop: "20px"}}>
+    <SafeAreaView style={{marginHorizontal: 1, flex: 1, paddingBottom: 15, backgroundColor: '#F2F3F7', paddingTop: 40}}>
+      <ScrollView style={{backgroundColor: '#F2F3F7'}}>
         <View style={styles.caseInfo}>
           <View style={styles.datetimes}>
             <Text style={styles.secondaryText}>Date:<Text style={styles.required}>*</Text></Text>
@@ -732,15 +725,35 @@ const Blotter = ({ navigation }) => {
           </View>
         </View>
 
-        <View style={styles.proofSection}>
-          <Text style={styles.sectionText}>Upload Photos/Videos (Optional)</Text>
-          <TouchableOpacity style={styles.imagePickerBackground} onPress={pickImageFromGallery}>
-            <View style={{flexDirection: 'row', flex: 1, alignItems: 'center', justifyContent: 'center'}}>
-              <Ionicons name='camera-outline' size={20} style={{color: '#710808'}}/>
-              <Text style={{fontSize: 16, color: '#710808', marginLeft: 5}}>Upload Photos/Video</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
+
+        {selectedImages.length > 0 ? (
+          <View style={styles.proofSection}>
+            <Text style={styles.sectionText}>Upload Photos/Videos (Optional)</Text>
+            <TouchableOpacity style={styles.imagePickerBackground} onPress={pickImageFromGallery}>
+              <FlatList
+                scrollEnabled={false}
+                data={selectedImages}
+                keyExtractor={(item, index) => index.toString()}
+                renderItem={({ item }) => (
+                  <View style={{marginVertical: 5}}>
+                    <Text style={{ textAlign: 'center', borderWidth: 1, borderRadius: 10 }}>{selectedImages}</Text>
+                  </View>
+                )}
+              />
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.proofSection}>
+            <Text style={styles.sectionText}>Upload Photos/Videos (Optional)</Text>
+            <TouchableOpacity style={styles.imagePickerBackground} onPress={pickImageFromGallery}>
+              <View style={{flexDirection: 'row', flex: 1, alignItems: 'center', justifyContent: 'center'}}>
+                <Ionicons name='camera-outline' size={20} style={{color: '#710808'}}/>
+                <Text style={{fontSize: 16, color: '#710808', marginLeft: 5}}>Upload Photos/Video</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        )}
+
 
         {isVisible && (
           <View style={styles.proceedTos}>
@@ -832,8 +845,7 @@ const Blotter = ({ navigation }) => {
           </Modal>
         </View>
       </ScrollView>
-    </View>
-    
+    </SafeAreaView>
 
   );
 };
@@ -843,23 +855,6 @@ const styles = StyleSheet.create({
     color:'#710808',
     fontWeight: 'bold',
     fontSize: 20
-  },
-  container: {
-    flex: 1,
-    backgroundColor: "#f5f5f5",
-  },
-  header: {
-    backgroundColor: "#800000",
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 15,
-    marginBottom: "20px",
-  },
-  headerTitle: {
-    color: "#fff",
-    fontSize: 20,
-    fontWeight: "bold",
-    marginLeft: 15,
   },
   required: {
     color: '#710808',
@@ -1019,8 +1014,14 @@ const styles = StyleSheet.create({
   },
   imagePickerBackground: {
     backgroundColor: '#F4EAEA',
-    borderRadius: 5,
-    minHeight: 100
+    borderRadius: 10,
+    minHeight: 100,
+    marginBottom: 10,
+    marginTop: 5,
+    borderWidth: 1,
+    borderColor: "#750000",
+    padding: 10
+
   },
   proceedTos: {
     display: 'flex',
@@ -1099,4 +1100,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Blotter;
+export default BlotterForm;

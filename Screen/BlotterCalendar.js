@@ -6,41 +6,70 @@ import {
   TouchableOpacity,
   FlatList,
 } from "react-native";
+import { Calendar } from "react-native-calendars";
+import axios from "axios";
+import uuid from "react-native-uuid";
 
 const BlotterCalendar = () => {
-  // Dummy data for today's sessions
-  const sessions = [
-    {
-      id: "1",
-      date: "26 June",
-      time: "9:00 - 11:00 AM",
-      type: "Mediation/Hearing/Lupon",
-      officers: "Barangay Captain/Councilor/Appointed Community Member",
-    },
-    {
-      id: "2",
-      date: "26 June",
-      time: "9:00 - 11:00 AM",
-      type: "Mediation/Hearing/Lupon",
-      officers: "Barangay Captain/Councilor/Appointed Community Member",
-    },
-  ];
+  const [markedDates, setMarkedDates] = React.useState({});
+  const [sessions, setSessions] = React.useState([]);
+
+  React.useEffect(() => {
+    const fetchCalendarData = async () => {
+      try {
+        const response = await axios.get(
+          "https://brgyapp.lesterintheclouds.com/fetch_blotter_calendar.php"
+        );
+
+        const data = response.data;
+
+        const marked = {};
+        const todaySessions = [];
+
+        data.forEach((item) => {
+          const date = item.dateHearing || item.approvedDatetime.split(" ")[0];
+          marked[date] = { marked: true, dotColor: "#800000" };
+
+          if (date === new Date().toISOString().split("T")[0]) {
+            todaySessions.push({
+              id: uuid.v4(), // Generate unique ID
+              date,
+              time: item.timeHearing || "N/A",
+              type: item.status || "N/A", // Use `status` as "Type of Session"
+              officers: item.position || "N/A", // Use `position` for officers
+            });
+          }
+        });
+
+        setMarkedDates(marked);
+        setSessions(todaySessions);
+      } catch (error) {
+        console.error("Error fetching calendar data:", error);
+      }
+    };
+
+    fetchCalendarData();
+  }, []);
 
   const renderSessionItem = ({ item }) => (
     <View style={styles.sessionCard}>
       <View style={styles.dateContainer}>
-        <Text style={styles.dateText}>{item.date.split(" ")[0]}</Text>
-        <Text style={styles.monthText}>{item.date.split(" ")[1]}</Text>
+        <Text style={styles.dateText}>{item.date.split("-")[2]}</Text>
+        <Text style={styles.monthText}>
+          {new Date(item.date).toLocaleString("default", { month: "long" })}
+        </Text>
       </View>
       <View style={styles.sessionDetails}>
         <Text style={styles.sessionText}>
-          <Text style={styles.label}>Time:</Text> {item.time}
+          <Text style={styles.label}>Time: </Text>
+          {item.time}
         </Text>
         <Text style={styles.sessionText}>
-          <Text style={styles.label}>Type of Session:</Text> {item.type}
+          <Text style={styles.label}>Type of Session: </Text>
+          {item.type}
         </Text>
         <Text style={styles.sessionText}>
-          <Text style={styles.label}>Dispute Resolution Officers:</Text>{" "}
+          <Text style={styles.label}>Dispute Resolution Officers: </Text>
           {item.officers}
         </Text>
         <TouchableOpacity>
@@ -65,8 +94,22 @@ const BlotterCalendar = () => {
 
       {/* Calendar */}
       <View style={styles.calendar}>
-        <Text style={styles.calendarMonth}>JUNE 2024</Text>
-        {/* You can use a calendar library like `react-native-calendars` for this */}
+        <Calendar
+          current={new Date().toISOString().split("T")[0]}
+          monthFormat={"MMMM yyyy"}
+          onDayPress={(day) => console.log("Selected date:", day)}
+          markingType={"dot"}
+          markedDates={markedDates}
+          theme={{
+            selectedDayBackgroundColor: "#800000",
+            todayTextColor: "#800000",
+            arrowColor: "#800000",
+            dotColor: "#800000",
+            textDayFontWeight: "500",
+            textMonthFontWeight: "bold",
+            textDayHeaderFontWeight: "500",
+          }}
+        />
       </View>
 
       {/* Today's Sessions */}
@@ -74,7 +117,7 @@ const BlotterCalendar = () => {
       <FlatList
         data={sessions}
         renderItem={renderSessionItem}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.id} // Use the unique `id` as the key
         contentContainerStyle={styles.sessionsList}
       />
     </View>
@@ -84,7 +127,7 @@ const BlotterCalendar = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#f9f9f9",
   },
   header: {
     flexDirection: "row",
@@ -95,7 +138,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     color: "#fff",
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "bold",
   },
   navigationText: {
@@ -106,20 +149,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     margin: 10,
     borderRadius: 10,
-    padding: 10,
     elevation: 3,
-  },
-  calendarMonth: {
-    color: "#800000",
-    fontSize: 18,
-    fontWeight: "bold",
-    textAlign: "center",
-    padding: 10,
+    overflow: "hidden",
   },
   todayTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "bold",
-    margin: 10,
+    margin: 15,
     color: "#000",
   },
   sessionsList: {
@@ -140,22 +176,22 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     width: 60,
     height: 60,
-    marginRight: 10,
+    marginRight: 15,
   },
   dateText: {
     color: "#fff",
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "bold",
   },
   monthText: {
     color: "#fff",
-    fontSize: 12,
+    fontSize: 14,
   },
   sessionDetails: {
     flex: 1,
   },
   sessionText: {
-    fontSize: 14,
+    fontSize: 16,
     color: "#000",
     marginBottom: 5,
   },
@@ -165,7 +201,7 @@ const styles = StyleSheet.create({
   detailsLink: {
     color: "#800000",
     fontWeight: "bold",
-    marginTop: 5,
+    marginTop: 10,
   },
 });
 
