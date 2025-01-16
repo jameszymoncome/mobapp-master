@@ -13,6 +13,10 @@ import uuid from "react-native-uuid";
 const BlotterCalendar = () => {
   const [markedDates, setMarkedDates] = React.useState({});
   const [sessions, setSessions] = React.useState([]);
+  const [allSessions, setAllSessions] = React.useState([]); // Store all data
+  const [selectedDate, setSelectedDate] = React.useState(
+    new Date().toISOString().split("T")[0]
+  ); // Default to today's date
 
   React.useEffect(() => {
     const fetchCalendarData = async () => {
@@ -24,25 +28,24 @@ const BlotterCalendar = () => {
         const data = response.data;
 
         const marked = {};
-        const todaySessions = [];
+        const sessionList = [];
 
         data.forEach((item) => {
           const date = item.dateHearing || item.approvedDatetime.split(" ")[0];
           marked[date] = { marked: true, dotColor: "#800000" };
 
-          if (date === new Date().toISOString().split("T")[0]) {
-            todaySessions.push({
-              id: uuid.v4(), // Generate unique ID
-              date,
-              time: item.timeHearing || "N/A",
-              type: item.status || "N/A", // Use `status` as "Type of Session"
-              officers: item.position || "N/A", // Use `position` for officers
-            });
-          }
+          sessionList.push({
+            id: uuid.v4(), // Generate unique ID
+            date,
+            time: item.timeHearing || "N/A",
+            type: item.status || "N/A", // Use `status` as "Type of Session"
+            officers: item.position || "N/A", // Use `position` for officers
+          });
         });
 
         setMarkedDates(marked);
-        setSessions(todaySessions);
+        setAllSessions(sessionList); // Store all data
+        filterSessions(sessionList, selectedDate); // Filter sessions for today's date initially
       } catch (error) {
         console.error("Error fetching calendar data:", error);
       }
@@ -50,6 +53,17 @@ const BlotterCalendar = () => {
 
     fetchCalendarData();
   }, []);
+
+  const filterSessions = (sessionList, date) => {
+    const filtered = sessionList.filter((session) => session.date === date);
+    setSessions(filtered);
+  };
+
+  const handleDayPress = (day) => {
+    const selected = day.dateString;
+    setSelectedDate(selected);
+    filterSessions(allSessions, selected); // Update the sessions for the selected date
+  };
 
   const renderSessionItem = ({ item }) => (
     <View style={styles.sessionCard}>
@@ -97,9 +111,17 @@ const BlotterCalendar = () => {
         <Calendar
           current={new Date().toISOString().split("T")[0]}
           monthFormat={"MMMM yyyy"}
-          onDayPress={(day) => console.log("Selected date:", day)}
+          onDayPress={handleDayPress}
           markingType={"dot"}
-          markedDates={markedDates}
+          markedDates={{
+            ...markedDates,
+            [selectedDate]: {
+              selected: true,
+              marked: true,
+              selectedColor: "#800000",
+              dotColor: "#800000",
+            },
+          }}
           theme={{
             selectedDayBackgroundColor: "#800000",
             todayTextColor: "#800000",
@@ -112,8 +134,12 @@ const BlotterCalendar = () => {
         />
       </View>
 
-      {/* Today's Sessions */}
-      <Text style={styles.todayTitle}>TODAY</Text>
+      {/* Selected Date's Sessions */}
+      <Text style={styles.todayTitle}>
+        {selectedDate === new Date().toISOString().split("T")[0]
+          ? "TODAY"
+          : `SESSIONS ON ${new Date(selectedDate).toLocaleDateString()}`}
+      </Text>
       <FlatList
         data={sessions}
         renderItem={renderSessionItem}

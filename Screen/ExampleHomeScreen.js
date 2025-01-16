@@ -259,6 +259,12 @@ const ExampleHomeScreen = ({ navigation }) => {
           onPress={() => navigation.navigate("Login")}
         />
       </View>
+      <View style={styles.buttonContainer}>
+        <Button
+          title="Transactions"
+          onPress={() => navigation.navigate("Transactions")}
+        />
+      </View>
     </View>
   );
 };

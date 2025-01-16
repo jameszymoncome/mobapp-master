@@ -10,6 +10,8 @@ import Notification from './Screen/Notification';
 import Login from './Screen/Login';
 import Blotter from './Screen/Blotter';
 import BlotterCalendar from './Screen/BlotterCalendar';
+import IncidentReport from './Screen/IncidentReport';
+import Transactions from './Screen/transact';
 
 export default function App() {
 
@@ -26,6 +28,8 @@ export default function App() {
         <Stack.Screen name="Login" component={Login} />
         <Stack.Screen name="Blotter" component={Blotter} />
         <Stack.Screen name="BlotterCalendar" component={BlotterCalendar} />
+        <Stack.Screen name="IncidentReport" component={IncidentReport} />
+        <Stack.Screen name="Transactions" component={Transactions} />
       </Stack.Navigator>
 
   </NavigationContainer>
